@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Auction Bidding</title>
+  </head>
+  <body>
+    <h1>Auction: <span id="auctionTitle">Vintage Car</span></h1>
+    <p>Current Price: <span id="currentPrice">1000</span></p>
+    <p>Status: <span id="status"></span></p>
+    <input type="number" id="bidAmount" placeholder="Enter bid" />
+    <button onclick="placeBid()">Place Bid</button>
+    <button onclick="switchAuction('6853ef1409f2044849564f0b', 'Vintage Car')">
+      Switch to Vintage Car
+    </button>
+    <button
+      onclick="switchAuction('68583e57e32903c2a989328e', 'Classic Motorcycle')"
+    >
+      Switch to Classic Motorcycle
+    </button>
+    <script src="https://cdn.socket.io/4.2.0/socket.io.min.js"></script>
+    <script>
+      const socket = io("http://192.168.29.61:5000");
+      let auctionId = "6853ef1409f2044849564f0b";
+      let userId = localStorage.getItem('userId') || "user_" + Math.random().toString(36).substr(2, 9);
+      let minIncrement = 100;
+
+      socket.on("connect", () => {
+        socket.emit("joinAuction", auctionId);
+        console.log("Joined auction", auctionId);
+        updateAuctionTitle();
+      });
+
+      socket.on("connect_error", (error) => {
+        console.error("Connection error:", error.message);
+      });
+
+      socket.on("error", (error) => {
+        console.error("Socket error:", error.message);
+      });
+
+      socket.on("bidUpdate", (data) => {
+        if (data.auctionId === auctionId) {
+          const price = Math.round(parseFloat(data.currentPrice));
+          document.getElementById("currentPrice").textContent = isNaN(price)
+            ? "N/A"
+            : price;
+          if (data.bidder !== userId) {
+            document.getElementById("status").textContent =
+              "Bid updated by another user";
+          }
+          console.log("Bid update received:", data);
+        }
+      });
+
+      socket.on("outbid", (data) => {
+        if (data.auctionId === auctionId) {
+          document.getElementById("status").textContent =
+            "You were outbid! Current price: " + data.currentPrice;
+          console.log("Outbid notification:", data);
+        }
+      });
+
+      socket.on("highestBid", (data) => {
+        if (data.auctionId === auctionId) {
+          document.getElementById("status").textContent =
+            "You are the highest bidder! Current price: " + data.currentPrice;
+          console.log("Highest bid notification:", data);
+        }
+      });      socket.on("auctionEnded", (data) => {
+        console.log("🏁 Auction ended event received:", data);
+        
+        if (data.auctionId === auctionId) {
+          // Update status with winner information
+          const statusElement = document.getElementById("status");
+          statusElement.innerHTML = `
+            <div style="color: red; font-weight: bold; font-size: 18px;">
+              🏁 AUCTION ENDED!<br>
+              🏆 Winner: ${data.winner}<br>
+              💰 Final Price: $${data.finalPrice || 'Unknown'}
+            </div>
+          `;
+          
+          // Show alert with winner information
+          alert(`🎉 Auction "${data.title || 'Unknown'}" has ended!\n🏆 Winner: ${data.winner}\n💰 Final Price: $${data.finalPrice || 'Unknown'}`);
+          
+          // Disable bidding controls
+          document.getElementById("bidAmount").disabled = true;
+          const placeBidButton = document.querySelector('button[onclick="placeBid()"]');
+          if (placeBidButton) {
+            placeBidButton.disabled = true;
+            placeBidButton.textContent = "Auction Ended";
+            placeBidButton.style.backgroundColor = "#ccc";
+          }
+        }
+      });socket.on("bidError", (message) => {
+        document.getElementById("status").textContent = "Error: " + message;
+        console.error("Bid error:", message);
+      });
+
+      function placeBid() {
+        const currentPrice =
+          Math.round(
+            parseFloat(document.getElementById("currentPrice").textContent)
+          ) || 0;
+        const amountStr = document.getElementById("bidAmount").value.trim();
+        const amount = Math.round(parseFloat(amountStr));
+        console.log("Parsed amount:", amount, "Current price:", currentPrice);
+        if (isNaN(amount) || amount <= 0 || amount > Number.MAX_SAFE_INTEGER) {
+          document.getElementById("status").textContent =
+            "Please enter a valid positive numeric bid within safe limits";
+        } else if (amount <= currentPrice) {
+          document.getElementById("status").textContent =
+            "Bid must be higher than current price";
+        } else if (amount < currentPrice + minIncrement) {
+          document.getElementById(
+            "status"
+          ).textContent = `Bid must be at least ${currentPrice + minIncrement}`;
+        } else {
+          console.log("Placing bid:", { auctionId, amount, userId });
+          socket.emit("placeBid", { auctionId, amount, userId });
+          document.getElementById("bidAmount").value = "";
+        }
+      }      async function switchAuction(newAuctionId, title) {
+        auctionId = newAuctionId;
+        socket.emit("joinAuction", auctionId);
+        document.getElementById("auctionTitle").textContent = title;
+
+        // Fetch auction details from backend
+        try {
+          const response = await fetch(`http://192.168.29.61:5000/api/auctions/${auctionId}`, {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem('token')}`
+            }
+          });
+          if (!response.ok) throw new Error("Failed to fetch auction details");
+
+          const auction = await response.json();
+          document.getElementById("currentPrice").textContent = auction.currentPrice || "N/A";
+
+          if (auction.status === "ended") {
+            const statusElement = document.getElementById("status");
+            statusElement.innerHTML = `
+              <div style="color: red; font-weight: bold; font-size: 18px;">
+                🏁 AUCTION ENDED!<br>
+                🏆 Winner: ${auction.highestBidder || "No winner"}<br>
+                💰 Final Price: $${auction.currentPrice || "Unknown"}
+              </div>
+            `;
+
+            // Disable bidding controls
+            document.getElementById("bidAmount").disabled = true;
+            const placeBidButton = document.querySelector('button[onclick="placeBid()"]');
+            if (placeBidButton) {
+              placeBidButton.disabled = true;
+              placeBidButton.textContent = "Auction Ended";
+              placeBidButton.style.backgroundColor = "#ccc";
+            }
+          } else {
+            document.getElementById("status").textContent = "";
+
+            // Re-enable bidding controls
+            document.getElementById("bidAmount").disabled = false;
+            const placeBidButton = document.querySelector('button[onclick="placeBid()"]');
+            if (placeBidButton) {
+              placeBidButton.disabled = false;
+              placeBidButton.textContent = "Place Bid";
+              placeBidButton.style.backgroundColor = "";
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching auction details:", error);
+          document.getElementById("status").textContent = "Error fetching auction details";
+        }
+
+        console.log("Switched to auction", auctionId);
+      }
+
+      async function fetchAuctionDetails() {
+        try {
+          const response = await fetch(`http://192.168.29.61:5000/api/auctions/${auctionId}`, {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem('token')}`
+            }
+          });
+          if (!response.ok) throw new Error("Failed to fetch auction details");
+
+          const auction = await response.json();
+          document.getElementById("currentPrice").textContent = auction.currentPrice || "N/A";
+          document.getElementById("auctionTitle").textContent = auction.title || "Unknown Auction";
+
+          if (auction.status === "ended") {
+            const statusElement = document.getElementById("status");
+            statusElement.innerHTML = `
+              <div style="color: red; font-weight: bold; font-size: 18px;">
+                🏁 AUCTION ENDED!<br>
+                🏆 Winner: ${auction.highestBidder || "No winner"}<br>
+                💰 Final Price: $${auction.currentPrice || "Unknown"}
+              </div>
+            `;
+
+            // Disable bidding controls
+            document.getElementById("bidAmount").disabled = true;
+            const placeBidButton = document.querySelector('button[onclick="placeBid()"]');
+            if (placeBidButton) {
+              placeBidButton.disabled = true;
+              placeBidButton.textContent = "Auction Ended";
+              placeBidButton.style.backgroundColor = "#ccc";
+            }
+          } else {
+            document.getElementById("status").textContent = "";
+
+            // Re-enable bidding controls
+            document.getElementById("bidAmount").disabled = false;
+            const placeBidButton = document.querySelector('button[onclick="placeBid()"]');
+            if (placeBidButton) {
+              placeBidButton.disabled = false;
+              placeBidButton.textContent = "Place Bid";
+              placeBidButton.style.backgroundColor = "";
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching auction details:", error);
+          document.getElementById("status").textContent = "Error fetching auction details";
+        }
+      }
+
+      // Fetch auction details on page load
+      document.addEventListener("DOMContentLoaded", fetchAuctionDetails);
+
+      function updateAuctionTitle() {
+        const titles = {
+          "6853ef1409f2044849564f0b": "Vintage Car",
+          "68583e57e32903c2a989328e": "Classic Motorcycle",
+        };
+        document.getElementById("auctionTitle").textContent =
+          titles[auctionId] || "Unknown Auction";
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Login - Auction App</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f7f7f7; }
+    .login-container { max-width: 350px; margin: 60px auto; background: #fff; padding: 32px 24px; border-radius: 8px; box-shadow: 0 2px 8px #0001; }
+    .login-container h2 { text-align: center; margin-bottom: 18px; }
+    .login-container label { display: block; margin: 12px 0 4px; }
+    .login-container input, .login-container select { width: 100%; padding: 8px; margin-bottom: 12px; border-radius: 4px; border: 1px solid #ccc; }
+    .login-container button { width: 100%; padding: 10px; background: #007bff; color: #fff; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; }
+    .login-container button:hover { background: #0056b3; }
+    .error { color: red; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <h2>Login</h2>
+    <form id="loginForm">
+      <label for="role">Role</label>
+      <select id="role" required>
+        <option value="buyer">Buyer</option>
+        <option value="seller">Seller</option>
+        <option value="admin">Admin</option>
+      </select>
+      <label for="email">Email</label>
+      <input type="email" id="email" required />
+      <label for="password">Password</label>
+      <input type="password" id="password" required />
+      <button type="submit">Login</button>
+      <div class="error" id="loginError"></div>
+    </form>
+  </div>
+  <script>
+    document.getElementById('loginForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const role = document.getElementById('role').value;
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const errorDiv = document.getElementById('loginError');
+      errorDiv.textContent = '';
+      try {
+        const res = await fetch('http://192.168.29.61:5000/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Login failed');
+        // Save token, role, and user info
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('role', role);
+        localStorage.setItem('userId', data.userId || '');
+        // Redirect based on role
+        if (role === 'buyer') {
+          window.location.href = 'index.html';
+        } else if (role === 'seller') {
+          window.location.href = 'seller.html';
+        } else if (role === 'admin') {
+          window.location.href = 'admin.html';
+        }
+      } catch (err) {
+        errorDiv.textContent = err.message;
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,114 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Seller Dashboard - Auction App</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f7f7f7; }
+    .container { max-width: 700px; margin: 40px auto; background: #fff; padding: 32px 24px; border-radius: 8px; box-shadow: 0 2px 8px #0001; }
+    h2 { text-align: center; }
+    form { margin-bottom: 32px; }
+    label { display: block; margin: 12px 0 4px; }
+    input, textarea { width: 100%; padding: 8px; margin-bottom: 12px; border-radius: 4px; border: 1px solid #ccc; }
+    button { padding: 10px 18px; background: #007bff; color: #fff; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; }
+    button:hover { background: #0056b3; }
+    .auction-list { margin-top: 24px; }
+    .auction-item { border-bottom: 1px solid #eee; padding: 10px 0; }
+    .ended { color: red; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Seller Dashboard</h2>
+    <form id="createAuctionForm">
+      <label for="title">Auction Title</label>
+      <input type="text" id="title" required />
+      <label for="description">Description</label>
+      <textarea id="description" required></textarea>
+      <label for="basePrice">Base Price</label>
+      <input type="number" id="basePrice" min="1" required />
+      <label for="expirationTime">Expiration Time</label>
+      <input type="datetime-local" id="expirationTime" required />
+      <button type="submit">Create Auction</button>
+      <div class="error" id="auctionError" style="color:red;"></div>
+    </form>
+    <h3>Your Auctions</h3>
+    <button onclick="downloadExport('bidding-history')">Download Bidding History CSV</button>
+    <button onclick="downloadExport('auctions')">Download Auctions CSV</button>
+    <div class="auction-list" id="auctionList"></div>
+  </div>
+  <script>
+    // Redirect if not seller
+    if (localStorage.getItem('role') !== 'seller') window.location.href = 'login.html';
+    const token = localStorage.getItem('token');
+    const userId = localStorage.getItem('userId');
+    async function downloadExport(type) {
+      const userId = localStorage.getItem('userId');
+      const token = localStorage.getItem('token');
+      let url = '';
+      if (type === 'bidding-history') {
+        url = `http://192.168.29.61:5000/api/export/bidding-history/${userId}`;
+      } else if (type === 'auctions') {
+        url = `http://192.168.29.61:5000/api/export/auctions/${userId}`;
+      }
+      const res = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
+      const blob = await res.blob();
+      const a = document.createElement('a');
+      a.href = window.URL.createObjectURL(blob);
+      a.download = `${type}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(a.href);
+    }
+
+    async function fetchAuctions() {
+      console.log('Seller dashboard script loaded');
+      console.log('Role:', localStorage.getItem('role'));
+      console.log('Token:', localStorage.getItem('token'));
+      console.log('UserId:', localStorage.getItem('userId'));
+      try {
+        const res = await fetch('http://192.168.29.61:5000/api/auctions?seller=' + userId, {
+          headers: { Authorization: 'Bearer ' + token }
+        });
+        console.log('Fetch status:', res.status);
+        const auctions = await res.json();
+        console.log('Auctions response:', auctions);
+        const list = document.getElementById('auctionList');
+        list.innerHTML = auctions.map(a => `
+          <div class="auction-item">
+            <b>${a.title}</b> - $${a.currentPrice || a.basePrice} <span class="${a.status === 'ended' ? 'ended' : ''}">[${a.status}]</span><br>
+            Ends: ${new Date(a.expirationTime).toLocaleString()}<br>
+            Winner: ${a.highestBidder || 'N/A'}
+          </div>
+        `).join('') || 'No auctions yet.';
+      } catch (err) {
+        console.error('Error fetching auctions:', err);
+      }
+    }
+    fetchAuctions();
+    document.getElementById('createAuctionForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const title = document.getElementById('title').value.trim();
+      const description = document.getElementById('description').value.trim();
+      const basePrice = document.getElementById('basePrice').value;
+      const expirationTime = document.getElementById('expirationTime').value;
+      const errorDiv = document.getElementById('auctionError');
+      errorDiv.textContent = '';
+      try {
+        const res = await fetch('http://192.168.29.61:5000/api/auctions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+          body: JSON.stringify({ title, description, basePrice, expirationTime })
+        });
+        if (!res.ok) throw new Error((await res.json()).error || 'Failed to create auction');
+        await fetchAuctions();
+        document.getElementById('createAuctionForm').reset();
+      } catch (err) {
+        errorDiv.textContent = err.message;
+      }
+    });
+  </script>
+</body>
+</html>

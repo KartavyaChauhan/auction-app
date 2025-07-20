@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Admin Dashboard - Auction App</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f7f7f7; }
+    .container { max-width: 900px; margin: 40px auto; background: #fff; padding: 32px 24px; border-radius: 8px; box-shadow: 0 2px 8px #0001; }
+    h2 { text-align: center; }
+    .section { margin-bottom: 32px; }
+    .auction-list, .user-list { margin-top: 12px; }
+    .auction-item, .user-item { border-bottom: 1px solid #eee; padding: 10px 0; }
+    .ended { color: red; }
+    .export-btn { margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Admin Dashboard</h2>
+    <div class="section">
+      <h3>All Auctions</h3>
+      <div class="auction-list" id="auctionList"></div>
+      <button class="export-btn" onclick="exportCSV()">Export Bids CSV</button>
+    </div>
+    <div class="section">
+      <h3>All Users</h3>
+      <div class="user-list" id="userList"></div>
+    </div>
+  </div>
+  <script>
+    // Redirect if not admin
+    if (localStorage.getItem('role') !== 'admin') window.location.href = 'login.html';
+    const token = localStorage.getItem('token');
+    async function fetchAuctions() {
+      const res = await fetch('http://192.168.29.61:5000/api/auctions', {
+        headers: { Authorization: 'Bearer ' + token }
+      });
+      const auctions = await res.json();
+      const list = document.getElementById('auctionList');
+      list.innerHTML = auctions.map(a => `
+        <div class="auction-item">
+          <b>${a.title}</b> - $${a.currentPrice || a.basePrice} <span class="${a.status === 'ended' ? 'ended' : ''}">[${a.status}]</span><br>
+          Seller: ${a.seller}<br>
+          Ends: ${new Date(a.expirationTime).toLocaleString()}<br>
+          Winner: ${a.highestBidder || 'N/A'}
+        </div>
+      `).join('') || 'No auctions yet.';
+    }
+    async function fetchUsers() {
+      const res = await fetch('http://192.168.29.61:5000/api/admin/users', {
+        headers: { Authorization: 'Bearer ' + token }
+      });
+      const users = await res.json();
+      const list = document.getElementById('userList');
+      list.innerHTML = users.map(u => `
+        <div class="user-item">
+          <b>${u.username}</b> (${u.role})<br>
+          Email: ${u.email}
+        </div>
+      `).join('') || 'No users.';
+    }
+    fetchAuctions();
+    fetchUsers();
+    window.exportCSV = async function() {
+      const res = await fetch('http://192.168.29.61:5000/api/export/bids', {
+        headers: { Authorization: 'Bearer ' + token }
+      });
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'bids.csv';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    }
+  </script>
+</body>
+</html>
