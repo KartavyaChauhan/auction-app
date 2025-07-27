@@ -1,17 +1,21 @@
 const express = require('express');
 const router = express.Router();
 
-const { createAuction, getAllAuctions, getAuctionById } = require('../controllers/auctionController');
 const authMiddleware = require('../middleware/authMiddleware');
+const { createAuction, getAllAuctions, getAuctionById, updateAuction } = require('../controllers/auctionController');
+const upload = require('../middleware/upload');
+// Update auction (Sellers only, with image upload)
+router.patch('/:id', authMiddleware(['Seller']), upload.single('image'), updateAuction);
 const { validateAuction } = require('../middleware/validators');
-// Create a new auction (Sellers only)
-router.post('/', authMiddleware(['Seller']), createAuction);
+// Create a new auction (Sellers only, with image upload)
+router.post('/', authMiddleware(['Seller']), upload.single('image'), createAuction);
 
-// Get all auctions (Buyers & Sellers)
-router.get('/', authMiddleware(['Buyer', 'Seller']), getAllAuctions);
 
-// Get auction by ID (Buyers & Sellers)
-router.get('/:id', authMiddleware(['Buyer', 'Seller']), getAuctionById);
+// Get all auctions (PUBLIC)
+router.get('/', getAllAuctions);
+
+// Get auction by ID (PUBLIC)
+router.get('/:id', getAuctionById);
 
 router.post('/', authMiddleware(['Seller']), validateAuction, createAuction);
 

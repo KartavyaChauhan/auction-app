@@ -12,6 +12,9 @@
     .login-container button { width: 100%; padding: 10px; background: #007bff; color: #fff; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; }
     .login-container button:hover { background: #0056b3; }
     .error { color: red; text-align: center; }
+    /* Modal styles */
+    #resetModal { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.3); z-index: 10; align-items: center; justify-content: center; }
+    #resetModal > div { background: #fff; padding: 24px 18px; border-radius: 8px; max-width: 350px; margin: auto; box-shadow: 0 2px 8px #0002; }
   </style>
 </head>
 <body>
@@ -29,8 +32,25 @@
       <label for="password">Password</label>
       <input type="password" id="password" required />
       <button type="submit">Login</button>
+      <button type="button" id="forgotBtn" style="margin-top:8px;background:#f39c12;color:#fff;">Forgot Password?</button>
       <div class="error" id="loginError"></div>
     </form>
+  </div>
+  <!-- Password Reset Modal -->
+  <div id="resetModal">
+    <div>
+      <h3>Reset Password</h3>
+      <form id="resetForm">
+        <label for="resetEmail">Email</label>
+        <input type="email" id="resetEmail" required />
+        <label for="resetNewPassword">New Password</label>
+        <input type="password" id="resetNewPassword" required />
+        <button type="submit">Reset Password</button>
+        <button type="button" id="closeReset" style="margin-top:8px;">Cancel</button>
+        <div class="error" id="resetError"></div>
+        <div id="resetSuccess" style="color:green;margin-top:8px;"></div>
+      </form>
+    </div>
   </div>
   <script>
     document.getElementById('loginForm').addEventListener('submit', async function(e) {
@@ -41,13 +61,21 @@
       const errorDiv = document.getElementById('loginError');
       errorDiv.textContent = '';
       try {
+        // Always clear localStorage before login to avoid role/userId/token conflicts
+        localStorage.clear();
         const res = await fetch('http://192.168.29.61:5000/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password })
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Login failed');
+        if (!res.ok) {
+          // If backend returns HTML (e.g., 500 error page), show a generic error
+          if (res.headers.get('content-type') && res.headers.get('content-type').includes('text/html')) {
+            throw new Error('Server error. Please try again later.');
+          }
+          throw new Error(data.error || 'Login failed');
+        }
         // Save token, role, and user info
         localStorage.setItem('token', data.token);
         localStorage.setItem('role', role);
@@ -60,6 +88,35 @@
         } else if (role === 'admin') {
           window.location.href = 'admin.html';
         }
+      } catch (err) {
+        errorDiv.textContent = err.message;
+      }
+    });
+    document.getElementById('forgotBtn').onclick = function() {
+      document.getElementById('resetModal').style.display = 'flex';
+    };
+    document.getElementById('closeReset').onclick = function() {
+      document.getElementById('resetModal').style.display = 'none';
+      document.getElementById('resetError').textContent = '';
+      document.getElementById('resetSuccess').textContent = '';
+    };
+    document.getElementById('resetForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const email = document.getElementById('resetEmail').value.trim();
+      const newPassword = document.getElementById('resetNewPassword').value;
+      const errorDiv = document.getElementById('resetError');
+      const successDiv = document.getElementById('resetSuccess');
+      errorDiv.textContent = '';
+      successDiv.textContent = '';
+      try {
+        const res = await fetch('http://192.168.29.61:5000/api/auth/reset-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, newPassword })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Reset failed');
+        successDiv.textContent = 'Password reset successful! You can now log in.';
       } catch (err) {
         errorDiv.textContent = err.message;
       }

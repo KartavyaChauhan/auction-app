@@ -98,6 +98,8 @@ app.use('/api/admin', adminRoutes);
 
 setupAuctionSockets(io);
 
+// Serve uploaded images statically
+app.use('/uploads', express.static(require('path').join(__dirname, '../uploads')));
 
 // Error handling middleware (should be after all routes)
 app.use((err, req, res, next) => {
@@ -119,7 +121,4 @@ module.exports = { io };
 
 
 // sudo service redis-server start
-// [sudo] password for karta:
-// Sorry, try again.
-// [sudo] password for karta:
 // karta@LAPTOP-4EFMT7SR:/mnt/c/Users/karta$ redis-cli ping

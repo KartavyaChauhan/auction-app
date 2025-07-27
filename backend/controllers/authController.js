@@ -44,6 +44,10 @@ const login = async (req, res) => {
     const user = await User.findOne({ email });
     if (!user) return res.status(400).json({ error: "Email does not exist" });
 
+    if (user.blocked) {
+      return res.status(403).json({ error: "Your account is blocked. Please contact support." });
+    }
+
     if (!user.password) {
       console.error(
         "Login error: User found but password is undefined",

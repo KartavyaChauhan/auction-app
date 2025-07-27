@@ -20,6 +20,10 @@ const userSchema=new mongoose.Schema({
         enum:['Buyer','Seller','Admin','buyer','seller','admin'], // allow all casings
         default:'Buyer'
     },
+    blocked:{
+        type:Boolean,
+        default:false
+    },
     createdAt:{
         type:Date,
         default:Date.now

@@ -8,7 +8,8 @@ const auctionSchema = new mongoose.Schema({
   expirationTime: { type: Date, required: true },
   seller: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   status: { type: String, enum: ['active', 'ended'], default: 'active' },
-  highestBidder: { type: String, default: null }
+  highestBidder: { type: String, default: null },
+  image: { type: String, default: null } // Store image filename or URL
 }, { timestamps: true });
 
 module.exports = mongoose.model('Auction', auctionSchema);

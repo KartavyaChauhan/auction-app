@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -30,6 +29,8 @@
       <input type="number" id="basePrice" min="1" required />
       <label for="expirationTime">Expiration Time</label>
       <input type="datetime-local" id="expirationTime" required />
+      <label for="image">Auction Image</label>
+      <input type="file" id="image" accept="image/*" />
       <button type="submit">Create Auction</button>
       <div class="error" id="auctionError" style="color:red;"></div>
     </form>
@@ -37,6 +38,27 @@
     <button onclick="downloadExport('bidding-history')">Download Bidding History CSV</button>
     <button onclick="downloadExport('auctions')">Download Auctions CSV</button>
     <div class="auction-list" id="auctionList"></div>
+    <div id="editAuctionModal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.3);z-index:10;align-items:center;justify-content:center;">
+      <div style="background:#fff;padding:24px 18px;border-radius:8px;max-width:350px;margin:auto;box-shadow:0 2px 8px #0002;">
+        <h3>Edit Auction</h3>
+        <form id="editAuctionForm" enctype="multipart/form-data">
+          <input type="hidden" id="editAuctionId" />
+          <label for="editExpirationTime">Expiration Time</label>
+          <input type="datetime-local" id="editExpirationTime" required />
+          <label for="editStatus">Status</label>
+          <select id="editStatus">
+            <option value="active">Active</option>
+            <option value="ended">Ended</option>
+          </select>
+          <label for="editAuctionImage">Auction Image</label>
+          <img id="editAuctionImagePreview" src="https://via.placeholder.com/120x80?text=No+Image" alt="Image Preview" style="width:120px;height:80px;object-fit:cover;border-radius:6px;border:1px solid #ccc;background:#eee;display:block;margin-bottom:8px;">
+          <input type="file" id="editAuctionImage" accept="image/*" />
+          <button type="submit">Update Auction</button>
+          <button type="button" id="closeEditModal" style="margin-top:8px;">Cancel</button>
+          <div class="error" id="editAuctionError" style="color:red;"></div>
+        </form>
+      </div>
+    </div>
   </div>
   <script>
     // Redirect if not seller
@@ -78,11 +100,74 @@
         const list = document.getElementById('auctionList');
         list.innerHTML = auctions.map(a => `
           <div class="auction-item">
-            <b>${a.title}</b> - $${a.currentPrice || a.basePrice} <span class="${a.status === 'ended' ? 'ended' : ''}">[${a.status}]</span><br>
-            Ends: ${new Date(a.expirationTime).toLocaleString()}<br>
-            Winner: ${a.highestBidder || 'N/A'}
+            <div style="display:flex;align-items:center;gap:16px;">
+              <img src="${a.image ? a.image : 'https://via.placeholder.com/120x80?text=No+Image'}" alt="Auction Image" style="width:120px;height:80px;object-fit:cover;border-radius:6px;border:1px solid #ccc;background:#eee;">
+              <div>
+                <b>${a.title}</b> - $${a.currentPrice || a.basePrice} <span class="${a.status === 'ended' ? 'ended' : ''}">[${a.status}]</span><br>
+                Ends: ${new Date(a.expirationTime).toLocaleString()}<br>
+                Winner: ${a.highestBidder || 'N/A'}<br>
+                <button onclick="showEditAuctionModal('${a._id}','${a.expirationTime}','${a.status}','${a.image || ''}')">Edit</button>
+              </div>
+            </div>
           </div>
         `).join('') || 'No auctions yet.';
+    // Show edit modal
+    window.showEditAuctionModal = function(id, expirationTime, status, image) {
+      document.getElementById('editAuctionId').value = id;
+      // Format expirationTime for datetime-local input
+      const dt = new Date(expirationTime);
+      const tzOffset = dt.getTimezoneOffset() * 60000;
+      const localISOTime = new Date(dt - tzOffset).toISOString().slice(0,16);
+      document.getElementById('editExpirationTime').value = localISOTime;
+      document.getElementById('editStatus').value = status;
+      document.getElementById('editAuctionModal').style.display = 'flex';
+      document.getElementById('editAuctionError').textContent = '';
+      // Show current image or placeholder
+      document.getElementById('editAuctionImagePreview').src = image && image !== 'null' ? image : 'https://via.placeholder.com/120x80?text=No+Image';
+    };
+    document.getElementById('closeEditModal').onclick = function() {
+      document.getElementById('editAuctionModal').style.display = 'none';
+    };
+    document.getElementById('editAuctionForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const id = document.getElementById('editAuctionId').value;
+      const expirationTime = document.getElementById('editExpirationTime').value;
+      const status = document.getElementById('editStatus').value;
+      const imageInput = document.getElementById('editAuctionImage');
+      const errorDiv = document.getElementById('editAuctionError');
+      errorDiv.textContent = '';
+      const formData = new FormData();
+      formData.append('expirationTime', expirationTime);
+      formData.append('status', status);
+      if (imageInput.files[0]) {
+        formData.append('image', imageInput.files[0]);
+      }
+      try {
+        const res = await fetch(`http://192.168.29.61:5000/api/auctions/${id}`, {
+          method: 'PATCH',
+          headers: {
+            Authorization: 'Bearer ' + token
+          },
+          body: formData
+        });
+        const contentType = res.headers.get('content-type');
+        let errorText = '';
+        if (!res.ok) {
+          if (contentType && contentType.includes('application/json')) {
+            const data = await res.json();
+            errorText = data.error || JSON.stringify(data);
+          } else {
+            errorText = await res.text();
+          }
+          console.error('Update auction error:', res.status, errorText);
+          throw new Error(errorText || `Failed to update auction (status ${res.status})`);
+        }
+        document.getElementById('editAuctionModal').style.display = 'none';
+        await fetchAuctions();
+      } catch (err) {
+        errorDiv.textContent = err.message;
+      }
+    });
       } catch (err) {
         console.error('Error fetching auctions:', err);
       }
@@ -94,13 +179,22 @@
       const description = document.getElementById('description').value.trim();
       const basePrice = document.getElementById('basePrice').value;
       const expirationTime = document.getElementById('expirationTime').value;
+      const imageInput = document.getElementById('image');
       const errorDiv = document.getElementById('auctionError');
       errorDiv.textContent = '';
+      const formData = new FormData();
+      formData.append('title', title);
+      formData.append('description', description);
+      formData.append('basePrice', basePrice);
+      formData.append('expirationTime', expirationTime);
+      if (imageInput.files[0]) {
+        formData.append('image', imageInput.files[0]);
+      }
       try {
         const res = await fetch('http://192.168.29.61:5000/api/auctions', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
-          body: JSON.stringify({ title, description, basePrice, expirationTime })
+          headers: { Authorization: 'Bearer ' + token },
+          body: formData
         });
         if (!res.ok) throw new Error((await res.json()).error || 'Failed to create auction');
         await fetchAuctions();

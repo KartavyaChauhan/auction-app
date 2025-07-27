@@ -9,14 +9,19 @@
     h2 { text-align: center; }
     .section { margin-bottom: 32px; }
     .auction-list, .user-list { margin-top: 12px; }
-    .auction-item, .user-item { border-bottom: 1px solid #eee; padding: 10px 0; }
+    .auction-item, .user-item { border-bottom: 1px solid #eee; padding: 10px 0; display: flex; align-items: center; justify-content: space-between; }
     .ended { color: red; }
     .export-btn { margin-top: 8px; }
+    .stats { background: #f0f0f0; padding: 12px; border-radius: 6px; margin-bottom: 24px; }
+    .btn { padding: 4px 10px; margin-left: 8px; border-radius: 4px; border: none; cursor: pointer; }
+    .block { background: #e74c3c; color: #fff; }
+    .unblock { background: #2ecc71; color: #fff; }
   </style>
 </head>
 <body>
   <div class="container">
     <h2>Admin Dashboard</h2>
+    <div class="stats" id="stats"></div>
     <div class="section">
       <h3>All Auctions</h3>
       <div class="auction-list" id="auctionList"></div>
@@ -31,21 +36,42 @@
     // Redirect if not admin
     if (localStorage.getItem('role') !== 'admin') window.location.href = 'login.html';
     const token = localStorage.getItem('token');
+
+    async function fetchStats() {
+      const res = await fetch('http://192.168.29.61:5000/api/admin/stats', {
+        headers: { Authorization: 'Bearer ' + token }
+      });
+      const stats = await res.json();
+      document.getElementById('stats').innerHTML = `
+        <b>Site Stats:</b><br>
+        Total Users: ${stats.totalUsers}<br>
+        Total Auctions: ${stats.totalAuctions}<br>
+        Active Auctions: ${stats.activeAuctions}<br>
+        Ended Auctions: ${stats.endedAuctions}
+      `;
+    }
+
     async function fetchAuctions() {
-      const res = await fetch('http://192.168.29.61:5000/api/auctions', {
+      const res = await fetch('http://192.168.29.61:5000/api/admin/auctions', {
         headers: { Authorization: 'Bearer ' + token }
       });
       const auctions = await res.json();
       const list = document.getElementById('auctionList');
       list.innerHTML = auctions.map(a => `
         <div class="auction-item">
-          <b>${a.title}</b> - $${a.currentPrice || a.basePrice} <span class="${a.status === 'ended' ? 'ended' : ''}">[${a.status}]</span><br>
-          Seller: ${a.seller}<br>
-          Ends: ${new Date(a.expirationTime).toLocaleString()}<br>
-          Winner: ${a.highestBidder || 'N/A'}
+          <span>
+            <b>${a.title}</b> - $${a.currentPrice || a.basePrice} <span class="${a.status === 'ended' ? 'ended' : ''}">[${a.status}]</span><br>
+            Seller: ${a.seller}<br>
+            Ends: ${new Date(a.expirationTime).toLocaleString()}<br>
+            Winner: ${a.highestBidder || 'N/A'}
+          </span>
+          <span>
+            ${a.status !== 'blocked' ? `<button class="btn block" onclick="blockAuction('${a._id}')">Block</button>` : `<button class="btn unblock" onclick="unblockAuction('${a._id}')">Unblock</button>`}
+          </span>
         </div>
       `).join('') || 'No auctions yet.';
     }
+
     async function fetchUsers() {
       const res = await fetch('http://192.168.29.61:5000/api/admin/users', {
         headers: { Authorization: 'Bearer ' + token }
@@ -54,15 +80,53 @@
       const list = document.getElementById('userList');
       list.innerHTML = users.map(u => `
         <div class="user-item">
-          <b>${u.username}</b> (${u.role})<br>
-          Email: ${u.email}
+          <span>
+            <b>${u.username}</b> (${u.role})<br>
+            Email: ${u.email}
+          </span>
+          <span>
+            ${u.role.toLowerCase() === 'admin' ? '' : (!u.blocked ? `<button class="btn block" onclick="blockUser('${u._id}', '${u.username}')">Block</button>` : `<button class="btn unblock" onclick="unblockUser('${u._id}', '${u.username}')">Unblock</button>`)}
+          </span>
         </div>
       `).join('') || 'No users.';
     }
-    fetchAuctions();
-    fetchUsers();
+
+    async function blockUser(id, username) {
+      const res = await fetch(`http://192.168.29.61:5000/api/admin/block-user/${id}`, {
+        method: 'PUT',
+        headers: { Authorization: 'Bearer ' + token }
+      });
+      if (res.ok) {
+        alert(`User '${username}' has been blocked.`);
+      }
+      fetchUsers();
+    }
+    async function unblockUser(id, username) {
+      const res = await fetch(`http://192.168.29.61:5000/api/admin/unblock-user/${id}`, {
+        method: 'PUT',
+        headers: { Authorization: 'Bearer ' + token }
+      });
+      if (res.ok) {
+        alert(`User '${username}' has been unblocked.`);
+      }
+      fetchUsers();
+    }
+    async function blockAuction(id) {
+      await fetch(`http://192.168.29.61:5000/api/admin/block-auction/${id}`, {
+        method: 'PUT',
+        headers: { Authorization: 'Bearer ' + token }
+      });
+      fetchAuctions();
+    }
+    async function unblockAuction(id) {
+      await fetch(`http://192.168.29.61:5000/api/admin/unblock-auction/${id}`, {
+        method: 'PUT',
+        headers: { Authorization: 'Bearer ' + token }
+      });
+      fetchAuctions();
+    }
     window.exportCSV = async function() {
-      const res = await fetch('http://192.168.29.61:5000/api/export/bids', {
+      const res = await fetch('http://192.168.29.61:5000/api/admin/export/bids', {
         headers: { Authorization: 'Bearer ' + token }
       });
       const blob = await res.blob();
@@ -75,6 +139,9 @@
       a.remove();
       window.URL.revokeObjectURL(url);
     }
+    fetchStats();
+    fetchAuctions();
+    fetchUsers();
   </script>
 </body>
 </html>
