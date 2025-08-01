@@ -1,8 +1,6 @@
-
 const { auctionQueue } = require('../workers/auctionWorker');
 
 const Auction = require('../models/Auction');
-
 
 const createAuction = async (req, res) => {
   const { title, description, basePrice, expirationTime } = req.body;
@@ -17,7 +15,6 @@ const createAuction = async (req, res) => {
     if (new Date(expirationTime) <= Date.now()) {
       return res.status(400).json({ error: 'Expiration time must be in the future' });
     }
-
 
     let imagePath = null;
     if (req.file) {
@@ -37,7 +34,11 @@ const createAuction = async (req, res) => {
 
     // ✅ Schedule job to auto-end the auction at expirationTime
     const delay = new Date(auction.expirationTime) - new Date();
-    await auctionQueue.add('checkAuction', { auctionId: auction._id }, { delay: Math.max(delay, 0) });
+    await auctionQueue.add(
+      'checkAuction',
+      { auctionId: auction._id },
+      { delay: Math.max(delay, 0) }
+    );
     console.log(`✅ Scheduled end job for auction ${auction._id} in ${delay} ms`);
 
     res.status(201).json(auction);
@@ -55,8 +56,7 @@ const getAllAuctions = async (req, res) => {
       filter.seller = req.query.seller;
     }
     // No status filter: return all auctions (active and ended)
-    const auctions = await Auction.find(filter)
-      .populate('seller', 'username email');
+    const auctions = await Auction.find(filter).populate('seller', 'username email');
     res.json(auctions);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -66,8 +66,7 @@ const getAllAuctions = async (req, res) => {
 // Get Auction by ID
 const getAuctionById = async (req, res) => {
   try {
-    const auction = await Auction.findById(req.params.id)
-      .populate('seller', 'username email');
+    const auction = await Auction.findById(req.params.id).populate('seller', 'username email');
     if (!auction) {
       return res.status(404).json({ error: 'Auction not found' });
     }
@@ -110,7 +109,11 @@ const updateAuction = async (req, res) => {
     // Remove all jobs for this auction (by job data.auctionId)
     const jobs = await auctionQueue.getDelayed();
     for (const job of jobs) {
-      if (job.data && job.data.auctionId && job.data.auctionId.toString() === auction._id.toString()) {
+      if (
+        job.data &&
+        job.data.auctionId &&
+        job.data.auctionId.toString() === auction._id.toString()
+      ) {
         await job.remove();
       }
     }
@@ -118,7 +121,11 @@ const updateAuction = async (req, res) => {
     // --- Reschedule job if auction is still active and expiration is in the future ---
     if (auction.status === 'active' && new Date(auction.expirationTime) > new Date()) {
       const delay = new Date(auction.expirationTime) - new Date();
-      await auctionQueue.add('checkAuction', { auctionId: auction._id }, { delay: Math.max(delay, 0) });
+      await auctionQueue.add(
+        'checkAuction',
+        { auctionId: auction._id },
+        { delay: Math.max(delay, 0) }
+      );
       console.log(`🔄 Rescheduled end job for auction ${auction._id} in ${delay} ms`);
     }
 

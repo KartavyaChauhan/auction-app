@@ -59,20 +59,20 @@
         </form>
       </div>
     </div>
-  </div>
-  <script>
+  </div>  <script>
+    // API base URL for all requests    const API_BASE_URL = "http://localhost:3000";
+    
     // Redirect if not seller
-    if (localStorage.getItem('role') !== 'seller') window.location.href = 'login.html';
+    if (localStorage.getItem('role') !== 'seller') window.location.href = 'index.html';
     const token = localStorage.getItem('token');
     const userId = localStorage.getItem('userId');
     async function downloadExport(type) {
       const userId = localStorage.getItem('userId');
       const token = localStorage.getItem('token');
-      let url = '';
-      if (type === 'bidding-history') {
-        url = `http://192.168.29.61:5000/api/export/bidding-history/${userId}`;
+      let url = '';      if (type === 'bidding-history') {
+        url = `${API_BASE_URL}/api/export/bidding-history/${userId}`;
       } else if (type === 'auctions') {
-        url = `http://192.168.29.61:5000/api/export/auctions/${userId}`;
+        url = `${API_BASE_URL}/api/export/auctions/${userId}`;
       }
       const res = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
       const blob = await res.blob();
@@ -91,7 +91,7 @@
       console.log('Token:', localStorage.getItem('token'));
       console.log('UserId:', localStorage.getItem('userId'));
       try {
-        const res = await fetch('http://192.168.29.61:5000/api/auctions?seller=' + userId, {
+        const res = await fetch(`${API_BASE_URL}/api/auctions?seller=${userId}`, {
           headers: { Authorization: 'Bearer ' + token }
         });
         console.log('Fetch status:', res.status);
@@ -99,9 +99,8 @@
         console.log('Auctions response:', auctions);
         const list = document.getElementById('auctionList');
         list.innerHTML = auctions.map(a => `
-          <div class="auction-item">
-            <div style="display:flex;align-items:center;gap:16px;">
-              <img src="${a.image ? a.image : 'https://via.placeholder.com/120x80?text=No+Image'}" alt="Auction Image" style="width:120px;height:80px;object-fit:cover;border-radius:6px;border:1px solid #ccc;background:#eee;">
+          <div class="auction-item">            <div style="display:flex;align-items:center;gap:16px;">
+              <img src="${a.image ? API_BASE_URL + a.image : 'https://via.placeholder.com/120x80?text=No+Image'}" alt="Auction Image" style="width:120px;height:80px;object-fit:cover;border-radius:6px;border:1px solid #ccc;background:#eee;">
               <div>
                 <b>${a.title}</b> - $${a.currentPrice || a.basePrice} <span class="${a.status === 'ended' ? 'ended' : ''}">[${a.status}]</span><br>
                 Ends: ${new Date(a.expirationTime).toLocaleString()}<br>
@@ -121,9 +120,8 @@
       document.getElementById('editExpirationTime').value = localISOTime;
       document.getElementById('editStatus').value = status;
       document.getElementById('editAuctionModal').style.display = 'flex';
-      document.getElementById('editAuctionError').textContent = '';
-      // Show current image or placeholder
-      document.getElementById('editAuctionImagePreview').src = image && image !== 'null' ? image : 'https://via.placeholder.com/120x80?text=No+Image';
+      document.getElementById('editAuctionError').textContent = '';      // Show current image or placeholder
+      document.getElementById('editAuctionImagePreview').src = image && image !== 'null' ? API_BASE_URL + image : 'https://via.placeholder.com/120x80?text=No+Image';
     };
     document.getElementById('closeEditModal').onclick = function() {
       document.getElementById('editAuctionModal').style.display = 'none';
@@ -142,11 +140,12 @@
       if (imageInput.files[0]) {
         formData.append('image', imageInput.files[0]);
       }
-      try {
-        const res = await fetch(`http://192.168.29.61:5000/api/auctions/${id}`, {
+      try {        const res = await fetch(`${API_BASE_URL}/api/auctions/${id}`, {
           method: 'PATCH',
           headers: {
             Authorization: 'Bearer ' + token
+            // Note: Do not set Content-Type when sending FormData
+            // The browser will automatically set the correct Content-Type with boundary
           },
           body: formData
         });
@@ -191,7 +190,7 @@
         formData.append('image', imageInput.files[0]);
       }
       try {
-        const res = await fetch('http://192.168.29.61:5000/api/auctions', {
+        const res = await fetch(`${API_BASE_URL}/api/auctions`, {
           method: 'POST',
           headers: { Authorization: 'Bearer ' + token },
           body: formData

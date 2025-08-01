@@ -4,6 +4,16 @@ const { auctionQueue } = require('../workers/auctionWorker'); // Added import fo
 const logger = require('../utils/logger');
 const setupAuctionSockets = (io) => {
   io.on('connection', (socket) => {
+    logger.info(`✅ Socket connected: ${socket.id}`);
+    
+    socket.on('disconnect', (reason) => {
+      logger.info(`❌ Socket disconnected: ${socket.id}, reason: ${reason}`);
+    });
+
+    socket.on('error', (error) => {
+      logger.error(`🔴 Socket error for ${socket.id}:`, error);
+    });
+
     socket.on('joinAuction', async (auctionId) => {
       socket.join(`auction_${auctionId}`);
       logger.info(`User ${socket.id} joined auction ${auctionId}`);
@@ -18,7 +28,7 @@ const setupAuctionSockets = (io) => {
             auctionId: auction._id,
             title: auction.title, // send the correct auction name
             winner: auction.highestBidder || 'No bids',
-            finalPrice: auction.currentPrice || auction.basePrice,
+            finalPrice: auction.currentPrice || auction.basePrice
           });
         }
       } catch (err) {
@@ -53,7 +63,13 @@ const setupAuctionSockets = (io) => {
         auction.currentPrice = amount;
         auction.highestBidder = userId; // Update highest bidder
         await auction.save();
-        logger.info('Auction saved: ' + JSON.stringify({ currentPrice: auction.currentPrice, highestBidder: auction.highestBidder }));
+        logger.info(
+          'Auction saved: ' +
+            JSON.stringify({
+              currentPrice: auction.currentPrice,
+              highestBidder: auction.highestBidder
+            })
+        );
 
         // Save the bid to the bids collection
         const bidDoc = new Bid({
@@ -73,7 +89,7 @@ const setupAuctionSockets = (io) => {
             { auctionId: auction._id },
             {
               delay,
-              jobId: auction._id.toString(), // Prevent duplicate jobs
+              jobId: auction._id.toString() // Prevent duplicate jobs
             }
           );
           logger.info(`✅ Re-scheduled end job for auction ${auction._id} in ${delay} ms`);

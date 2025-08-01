@@ -1,6 +1,6 @@
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-const User = require("../models/User");
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const User = require('../models/User');
 
 const signup = async (req, res) => {
   const { username, email, password, role } = req.body;
@@ -8,8 +8,7 @@ const signup = async (req, res) => {
   try {
     const existingUser = await User.findOne({ email });
 
-    if (existingUser)
-      return res.status(400).json({ error: "Email already exists" });
+    if (existingUser) return res.status(400).json({ error: 'Email already exists' });
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -17,20 +16,18 @@ const signup = async (req, res) => {
       username,
       email,
       password: hashedPassword,
-      role,
+      role
     });
 
     await user.save();
 
-    const token = jwt.sign(
-      { id: user._id, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: "1h" }
-    );
+    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
+      expiresIn: '1h'
+    });
 
     res.status(201).json({
       token,
-      user: { id: user._id, username, email, role },
+      user: { id: user._id, username, email, role }
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -42,33 +39,29 @@ const login = async (req, res) => {
 
   try {
     const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ error: "Email does not exist" });
+    if (!user) return res.status(400).json({ error: 'Email does not exist' });
 
     if (user.blocked) {
-      return res.status(403).json({ error: "Your account is blocked. Please contact support." });
+      return res.status(403).json({ error: 'Your account is blocked. Please contact support.' });
     }
 
     if (!user.password) {
-      console.error(
-        "Login error: User found but password is undefined",
-        user
-      );
+      console.error('Login error: User found but password is undefined', user);
       return res.status(500).json({
-        error: "User password is missing. Please contact support.",
+        error: 'User password is missing. Please contact support.'
       });
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid)
-      return res.status(400).json({ error: "Invalid password" });
+    if (!isPasswordValid) return res.status(400).json({ error: 'Invalid password' });
     const token = jwt.sign(
       {
         id: user._id,
         email: user.email,
-        role: user.role,
+        role: user.role
       },
       process.env.JWT_SECRET,
-      { expiresIn: "1h" }
+      { expiresIn: '1h' }
     );
 
     res.status(200).json({
@@ -77,12 +70,12 @@ const login = async (req, res) => {
       user: {
         id: user._id,
         email: user.email,
-        role: user.role,
-      },
+        role: user.role
+      }
     });
   } catch (error) {
-    console.error("Login error:", error);
-    res.status(500).json({ error: "Server error" });
+    console.error('Login error:', error);
+    res.status(500).json({ error: 'Server error' });
   }
 };
 

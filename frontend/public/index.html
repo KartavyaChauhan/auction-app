@@ -1,539 +1,126 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Auction Hub</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --primary-color: #4F46E5; /* Indigo */
-            --secondary-color: #6D28D9; /* Deep Purple */
-            --background-color: #F9FAFB; /* Light Gray */
-            --card-background: #FFFFFF;
-            --text-primary: #111827; /* Dark Gray */
-            --text-secondary: #6B7280; /* Medium Gray */
-            --accent-green: #10B981;
-            --accent-red: #EF4444;
-            --accent-blue: #3B82F6;
-            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-            --border-radius: 12px;
-        }
-
-        *, *::before, *::after {
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, var(--secondary-color) 0%, var(--primary-color) 100%);
-            color: var(--text-primary);
-            margin: 0;
-            padding: 40px 20px;
-            min-height: 100vh;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: var(--background-color);
-            padding: 32px 40px;
-            border-radius: 20px;
-            box-shadow: var(--shadow-lg);
-        }
-
-        h1 {
-            font-size: 2.25em;
-            font-weight: 700;
-            color: var(--secondary-color);
-            margin: 0 0 16px;
-            letter-spacing: -1px;
-        }
-
-        .section-title {
-            font-size: 1.5em;
-            font-weight: 600;
-            margin-top: 32px;
-            margin-bottom: 20px;
-            color: var(--text-primary);
-            border-bottom: 2px solid #E5E7EB;
-            padding-bottom: 8px;
-        }
-
-        .auction-list {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 28px;
-        }
-
-        .placeholder-text {
-            color: var(--text-secondary);
-            font-size: 1.1em;
-            padding: 20px 0;
-        }
-
-        .auction-card {
-            background: var(--card-background);
-            border-radius: var(--border-radius);
-            box-shadow: var(--shadow-md);
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            cursor: pointer;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-
-        .auction-card:hover {
-            transform: translateY(-8px);
-            box-shadow: var(--shadow-lg);
-        }
-
-        .auction-card .card-image {
-            width: 100%;
-            height: 180px;
-            object-fit: cover;
-            background-color: #E5E7EB;
-        }
-
-        .auction-card .card-content {
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            flex-grow: 1;
-        }
-
-        .auction-card .card-title {
-            font-size: 1.25em;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 12px;
-        }
-
-        .auction-card .card-info {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 0.9em;
-            color: var(--text-secondary);
-            margin-bottom: 16px;
-        }
-        
-        .auction-card .card-info svg {
-            width: 16px;
-            height: 16px;
-        }
-        
-        .auction-card .time-left { color: var(--accent-blue); }
-        .auction-card .ended-info { color: var(--accent-red); font-weight: 500;}
-
-        .auction-card .card-footer {
-            margin-top: auto;
-            padding-top: 16px;
-            border-top: 1px solid #E5E7EB;
-        }
-
-        .auction-card .price-label {
-            font-size: 0.85em;
-            color: var(--text-secondary);
-            margin-bottom: 4px;
-        }
-
-        .auction-card .price-amount {
-            font-size: 1.5em;
-            font-weight: 700;
-            color: var(--accent-green);
-        }
-
-        /* Detail Modal */
-        .detail-modal {
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: rgba(17, 24, 39, 0.6);
-            backdrop-filter: blur(8px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-            opacity: 0;
-            visibility: hidden;
-            transition: opacity 0.3s ease, visibility 0.3s ease;
-        }
-
-        .detail-modal.active {
-            opacity: 1;
-            visibility: visible;
-        }
-        
-        .detail-content {
-            background: var(--card-background);
-            border-radius: var(--border-radius);
-            box-shadow: var(--shadow-lg);
-            width: 90%;
-            max-width: 500px;
-            position: relative;
-            transform: scale(0.95);
-            transition: transform 0.3s ease;
-        }
-        .detail-modal.active .detail-content {
-            transform: scale(1);
-        }
-
-        .detail-content .detail-image {
-            width: 100%;
-            height: 250px;
-            object-fit: cover;
-            border-top-left-radius: var(--border-radius);
-            border-top-right-radius: var(--border-radius);
-        }
-
-        .detail-body { padding: 24px 32px; }
-
-        .close-btn {
-            position: absolute;
-            top: 16px; right: 16px;
-            background: rgba(255, 255, 255, 0.2);
-            color: #fff;
-            border: none; border-radius: 50%;
-            width: 36px; height: 36px;
-            font-size: 20px;
-            cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-            transition: background 0.2s ease;
-        }
-        .close-btn:hover { background: rgba(0,0,0,0.2); }
-
-        .detail-title { font-size: 1.75em; font-weight: 700; color: var(--text-primary); margin-bottom: 12px; }
-        .detail-price { font-size: 1.25em; font-weight: 600; color: var(--primary-color); margin-bottom: 8px; }
-        .detail-status { font-size: 1em; color: var(--text-secondary); margin-bottom: 20px; min-height: 24px; }
-        .detail-ended-banner { background: var(--accent-red); color: #fff; text-align: center; padding: 12px; font-weight: 600; border-radius: 8px; margin-bottom: 20px; }
-        .detail-winner { background: var(--accent-green); color: #fff; text-align: center; padding: 12px; font-weight: 600; border-radius: 8px; margin-bottom: 20px; }
-        
-        .detail-bid { display: flex; gap: 12px; }
-        .detail-bid input {
-            flex-grow: 1;
-            padding: 12px 16px;
-            border: 1px solid #D1D5DB;
-            border-radius: 8px;
-            font-size: 1em;
-            font-family: 'Inter', sans-serif;
-            transition: border-color 0.2s, box-shadow 0.2s;
-        }
-        .detail-bid input:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
-        }
-
-        .detail-bid button {
-            background: var(--primary-color);
-            color: #fff;
-            border: none;
-            border-radius: 8px;
-            padding: 12px 24px;
-            font-size: 1em;
-            font-weight: 600;
-            font-family: 'Inter', sans-serif;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-        .detail-bid button:hover { background: var(--secondary-color); }
-        .detail-bid button:disabled { background: #9CA3AF; cursor: not-allowed; }
-
-        /* Toast Notifications */
-        #toast-container {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            z-index: 2000;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .toast {
-            background-color: var(--text-primary);
-            color: #fff;
-            padding: 12px 20px;
-            border-radius: 8px;
-            box-shadow: var(--shadow-lg);
-            opacity: 0;
-            transform: translateX(100%);
-            animation: slideIn 0.5s forwards, fadeOut 0.5s 4.5s forwards;
-        }
-        .toast.success { background-color: var(--accent-green); }
-        .toast.error { background-color: var(--accent-red); }
-        .toast.info { background-color: var(--accent-blue); }
-
-        @keyframes slideIn {
-            to { opacity: 1; transform: translateX(0); }
-        }
-        @keyframes fadeOut {
-            to { opacity: 0; transform: translateX(100%); }
-        }
-
-        /* Responsive */
-        @media (max-width: 600px) {
-            body { padding: 20px 10px; }
-            .container { padding: 20px; }
-            h1 { font-size: 1.8em; }
-            .section-title { font-size: 1.25em; }
-            .auction-list { grid-template-columns: 1fr; }
-            .detail-body { padding: 20px; }
-        }
-
-    </style>
+  <meta charset="UTF-8" />
+  <title>Login - Auction App</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f7f7f7; }
+    .login-container { max-width: 350px; margin: 60px auto; background: #fff; padding: 32px 24px; border-radius: 8px; box-shadow: 0 2px 8px #0001; }
+    .login-container h2 { text-align: center; margin-bottom: 18px; }
+    .login-container label { display: block; margin: 12px 0 4px; }
+    .login-container input, .login-container select { width: 100%; padding: 8px; margin-bottom: 12px; border-radius: 4px; border: 1px solid #ccc; }
+    .login-container button { width: 100%; padding: 10px; background: #007bff; color: #fff; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; }
+    .login-container button:hover { background: #0056b3; }
+    .error { color: red; text-align: center; }
+    /* Modal styles */
+    #resetModal { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.3); z-index: 10; align-items: center; justify-content: center; }
+    #resetModal > div { background: #fff; padding: 24px 18px; border-radius: 8px; max-width: 350px; margin: auto; box-shadow: 0 2px 8px #0002; }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Auction Hub</h1>
-        <div>
-            <div class="section-title">Active Auctions</div>
-            <div id="activeAuctions" class="auction-list"></div>
-            
-            <div class="section-title">Ended Auctions</div>
-            <div id="endedAuctions" class="auction-list"></div>
-        </div>
+  <div class="login-container">
+    <h2>Login</h2>
+    <form id="loginForm">
+      <label for="role">Role</label>
+      <select id="role" required>
+        <option value="buyer">Buyer</option>
+        <option value="seller">Seller</option>
+        <option value="admin">Admin</option>
+      </select>
+      <label for="email">Email</label>
+      <input type="email" id="email" required />
+      <label for="password">Password</label>
+      <input type="password" id="password" required />
+      <button type="submit">Login</button>
+      <button type="button" id="forgotBtn" style="margin-top:8px;background:#f39c12;color:#fff;">Forgot Password?</button>
+      <div class="error" id="loginError"></div>
+    </form>
+  </div>
+  <!-- Password Reset Modal -->
+  <div id="resetModal">
+    <div>
+      <h3>Reset Password</h3>
+      <form id="resetForm">
+        <label for="resetEmail">Email</label>
+        <input type="email" id="resetEmail" required />
+        <label for="resetNewPassword">New Password</label>
+        <input type="password" id="resetNewPassword" required />
+        <button type="submit">Reset Password</button>
+        <button type="button" id="closeReset" style="margin-top:8px;">Cancel</button>
+        <div class="error" id="resetError"></div>
+        <div id="resetSuccess" style="color:green;margin-top:8px;"></div>
+      </form>
     </div>
-    
-    <div id="auctionDetailModal" class="detail-modal">
-        <div id="detailContent" class="detail-content">
-            </div>
-    </div>
-
-    <div id="toast-container"></div>
-    
-    <script src="https://cdn.socket.io/4.2.0/socket.io.min.js"></script>
-    <script>
-        const API_BASE_URL = "http://192.168.29.61:5000";
-        const socket = io(API_BASE_URL);
-
-        let auctions = [];
-        let selectedAuctionId = null;
-        const userId = localStorage.getItem('userId') || "user_" + Math.random().toString(36).substr(2, 9);
-        const MIN_INCREMENT = 100;
-
-        // --- UI Helper Functions ---
-        
-        function showToast(message, type = 'info') {
-            const container = document.getElementById('toast-container');
-            const toast = document.createElement('div');
-            toast.className = `toast ${type}`;
-            toast.textContent = message;
-            container.appendChild(toast);
-            setTimeout(() => toast.remove(), 5000);
-        }
-
-        function formatTimeLeft(expirationDate) {
-            if (!expirationDate) return 'N/A';
-            const now = new Date();
-            const end = new Date(expirationDate);
-            const diff = end - now;
-
-            if (diff <= 0) return 'Ended';
-
-            const d = Math.floor(diff / (1000 * 60 * 60 * 24));
-            const h = Math.floor((diff / (1000 * 60 * 60)) % 24);
-            const m = Math.floor((diff / 1000 / 60) % 60);
-
-            let result = '';
-            if (d > 0) result += `${d}d `;
-            if (h > 0) result += `${h}h `;
-            if (m > 0 && d === 0) result += `${m}m`;
-            
-            return result.trim() + ' left';
-        }
-
-        // --- Socket.IO Logic ---
-
-        socket.on("connect", () => {
-            console.log("Connected to server with ID:", socket.id);
-            if (selectedAuctionId) {
-                socket.emit("joinAuction", selectedAuctionId);
-            }
+  </div>
+  <script>
+    document.getElementById('loginForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const role = document.getElementById('role').value;
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const errorDiv = document.getElementById('loginError');
+      errorDiv.textContent = '';
+      try {
+        // Always clear localStorage before login to avoid role/userId/token conflicts
+        localStorage.clear();        const res = await fetch('http://localhost:3000/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
         });
-
-        socket.on("bidUpdate", (data) => {
-            // Refresh main list and modal if open
-            loadAuctions(); 
-            if (selectedAuctionId && data.auctionId === selectedAuctionId) {
-                showAuctionDetail(selectedAuctionId, true);
-            }
-        });
-
-        socket.on("outbid", (data) => {
-            if (selectedAuctionId && data.auctionId === selectedAuctionId) {
-                showToast(`You were outbid on ${data.title}!`, 'info');
-                document.getElementById("detailStatus").textContent = `You were outbid! Current price: $${data.currentPrice}`;
-            }
-        });
-
-        socket.on("highestBid", (data) => {
-             if (selectedAuctionId && data.auctionId === selectedAuctionId) {
-                showToast(`You are the highest bidder for ${data.title}!`, 'success');
-                document.getElementById("detailStatus").textContent = `You are the highest bidder! Current price: $${data.currentPrice}`;
-            }
-        });
-        
-        const shownEndedAlerts = new Set(JSON.parse(localStorage.getItem('shownEndedAlerts') || '[]'));
-        socket.on("auctionEnded", (data) => {
-            loadAuctions(); // Refresh the main list
-            if (!shownEndedAlerts.has(data.auctionId)) {
-                showToast(`Auction "${data.title}" has ended! Winner: ${data.winner}`, 'info');
-                shownEndedAlerts.add(data.auctionId);
-                localStorage.setItem('shownEndedAlerts', JSON.stringify(Array.from(shownEndedAlerts)));
-            }
-            if (selectedAuctionId && data.auctionId === selectedAuctionId) {
-                showAuctionDetail(selectedAuctionId, true);
-            }
-        });
-        
-        socket.on("bidError", (message) => {
-            showToast(message, 'error');
-            if (document.getElementById("detailStatus")) {
-                document.getElementById("detailStatus").textContent = "Error: " + message;
-            }
-        });
-
-        // --- Auction List/Detail Logic ---
-        
-        async function loadAuctions() {
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/auctions`);
-                if (!response.ok) throw new Error("Failed to fetch auctions");
-                auctions = await response.json();
-                renderAuctionLists();
-            } catch (error) {
-                console.error("Error loading auctions:", error);
-                const activeDiv = document.getElementById("activeAuctions");
-                activeDiv.innerHTML = `<div class="placeholder-text" style="color:var(--accent-red)">Error loading auctions. Please try again later.</div>`;
-            }
+        const data = await res.json();
+        if (!res.ok) {
+          // If backend returns HTML (e.g., 500 error page), show a generic error
+          if (res.headers.get('content-type') && res.headers.get('content-type').includes('text/html')) {
+            throw new Error('Server error. Please try again later.');
+          }
+          throw new Error(data.error || 'Login failed');
         }
-
-        function renderAuctionLists() {
-            const activeDiv = document.getElementById("activeAuctions");
-            const endedDiv = document.getElementById("endedAuctions");
-            activeDiv.innerHTML = '';
-            endedDiv.innerHTML = '';
-            
-            const now = new Date();
-            auctions.forEach(a => {
-                const isEnded = a.status === 'ended' || (a.expiration && new Date(a.expiration) < now);
-                const card = document.createElement('div');
-                card.className = 'auction-card';
-                card.onclick = () => showAuctionDetail(a._id);
-
-                card.innerHTML = `
-                    <img src="${a.image || 'https://via.placeholder.com/300x180?text=No+Image'}" alt="${a.title}" class="card-image">
-                    <div class="card-content">
-                        <div class="card-title">${a.title}</div>
-                        <div class="card-info">
-                            ${isEnded ? `
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="ended-info"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" /></svg>
-                                <span class="ended-info">Auction Ended</span>
-                            ` : `
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="time-left"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.58 6.533a.75.75 0 01.934-.515l5.25 2.5a.75.75 0 010 1.032l-5.25 2.5a.75.75 0 01-1.018-.948L13.46 10 9.5 7.467a.75.75 0 01.08-.934zM4.75 10a.75.75 0 01.75-.75h4.5a.75.75 0 010 1.5h-4.5A.75.75 0 014.75 10z" clip-rule="evenodd" /></svg>
-                                <span class="time-left">${formatTimeLeft(a.expiration)}</span>
-                            `}
-                        </div>
-                        <div class="card-footer">
-                            <div class="price-label">${isEnded ? 'Winning Bid' : 'Current Bid'}</div>
-                            <div class="price-amount">$${a.currentPrice || 0}</div>
-                        </div>
-                    </div>
-                `;
-
-                if (isEnded) endedDiv.appendChild(card);
-                else activeDiv.appendChild(card);
-            });
-
-            if (!activeDiv.hasChildNodes()) activeDiv.innerHTML = '<div class="placeholder-text">No active auctions right now.</div>';
-            if (!endedDiv.hasChildNodes()) endedDiv.innerHTML = '<div class="placeholder-text">No ended auctions to show.</div>';
+        // Save token, role, and user info
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('role', role);
+        localStorage.setItem('userId', data.userId || '');        // Redirect based on role
+        if (role === 'buyer') {
+          window.location.href = 'auctions.html';
+        } else if (role === 'seller') {
+          window.location.href = 'seller.html';} else if (role === 'admin') {
+          // Ensure the admin role is actually set
+          localStorage.setItem('role', 'admin');
+          // Add a reload param to force fresh load of the admin dashboard
+          window.location.href = 'admin.html?reload=' + new Date().getTime();
         }
-
-        async function showAuctionDetail(auctionId, refresh = false) {
-            if (!refresh) {
-                selectedAuctionId = auctionId;
-                socket.emit("joinAuction", auctionId);
-            }
-            
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/auctions/${auctionId}`);
-                if (!response.ok) throw new Error('Auction not found');
-                const auction = await response.json();
-
-                const modal = document.getElementById('auctionDetailModal');
-                const contentDiv = document.getElementById('detailContent');
-                modal.classList.add('active');
-
-                const now = new Date();
-                const isEnded = auction.status === 'ended' || (auction.expiration && new Date(auction.expiration) < now);
-
-                let bidSectionHTML = '';
-                if (isEnded) {
-                    bidSectionHTML = `<button class="detail-bid-button" disabled>Auction Ended</button>`;
-                } else {
-                    bidSectionHTML = `
-                        <input type='number' id='modalBidAmount' placeholder='Min bid $${(auction.currentPrice || 0) + MIN_INCREMENT}' min="${(auction.currentPrice || 0) + MIN_INCREMENT}">
-                        <button onclick='placeBidModal()'>Place Bid</button>
-                    `;
-                }
-
-                // Winner logic: prefer auction.winner, fallback to auction.highestBidder, fallback to "No winner"
-                let winnerName = auction.winner || auction.highestBidder || "No winner";
-
-                contentDiv.innerHTML = `
-                    <button class="close-btn" onclick="closeAuctionDetail()">×</button>
-                    <img id="detailImage" src="${auction.image || 'https://via.placeholder.com/500x250?text=No+Image'}" alt="${auction.title}" class="detail-image">
-                    <div class="detail-body">
-                        <div class="detail-title" id="detailTitle">${auction.title}</div>
-                        <div class="detail-price" id="detailPrice">Final Price: $${auction.finalPrice || auction.currentPrice || 0}</div>
-                        <div class="detail-status" id="detailStatus">${isEnded ? '' : 'Place your bid below.'}</div>
-                        ${isEnded ? `<div class="detail-ended-banner">🏁 AUCTION ENDED!</div>` : ''}
-                        ${isEnded ? `<div class="detail-winner">🏆 Winner: ${winnerName}</div>` : ''}
-                        <div class="detail-bid" id="detailBid">${bidSectionHTML}</div>
-                    </div>
-                `;
-            } catch (error) {
-                console.error("Error showing details:", error);
-                showToast("Could not load auction details.", "error");
-                closeAuctionDetail();
-            }
-        }
-
-        function closeAuctionDetail() {
-            document.getElementById('auctionDetailModal').classList.remove('active');
-            if (selectedAuctionId) {
-                socket.emit("leaveAuction", selectedAuctionId);
-                selectedAuctionId = null;
-            }
-        }
-
-        function placeBidModal() {
-            if (!selectedAuctionId) return;
-            const currentAuction = auctions.find(a => a._id === selectedAuctionId);
-            if(!currentAuction) return;
-
-            const currentPrice = Number(currentAuction.currentPrice) || 0;
-            const amountInput = document.getElementById("modalBidAmount");
-            const amount = Number(amountInput.value);
-
-            if (isNaN(amount) || amount <= 0) {
-                showToast("Please enter a valid bid amount.", "error");
-            } else if (amount <= currentPrice) {
-                showToast("Bid must be higher than the current price.", "error");
-            } else if (amount < currentPrice + MIN_INCREMENT) {
-                showToast(`Bid must be at least $${currentPrice + MIN_INCREMENT}`, "error");
-            } else {
-                socket.emit("placeBid", { auctionId: selectedAuctionId, amount, userId });
-                amountInput.value = "";
-                document.getElementById("detailStatus").textContent = "Placing your bid...";
-            }
-        }
-
-        document.addEventListener("DOMContentLoaded", loadAuctions);
-    </script>
+      } catch (err) {
+        errorDiv.textContent = err.message;
+      }
+    });
+    document.getElementById('forgotBtn').onclick = function() {
+      document.getElementById('resetModal').style.display = 'flex';
+    };
+    document.getElementById('closeReset').onclick = function() {
+      document.getElementById('resetModal').style.display = 'none';
+      document.getElementById('resetError').textContent = '';
+      document.getElementById('resetSuccess').textContent = '';
+    };
+    document.getElementById('resetForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const email = document.getElementById('resetEmail').value.trim();
+      const newPassword = document.getElementById('resetNewPassword').value;
+      const errorDiv = document.getElementById('resetError');
+      const successDiv = document.getElementById('resetSuccess');
+      errorDiv.textContent = '';
+      successDiv.textContent = '';
+      try {
+        const res = await fetch('http://localhost:3000/api/auth/reset-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, newPassword })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Reset failed');
+        successDiv.textContent = 'Password reset successful! You can now log in.';
+      } catch (err) {
+        errorDiv.textContent = err.message;
+      }
+    });
+  </script>
 </body>
 </html>

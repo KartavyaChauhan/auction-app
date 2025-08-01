@@ -11,7 +11,15 @@ const exportSellerAuctions = async (req, res) => {
       return res.status(404).json({ error: 'No auctions found for this seller' });
     }
 
-    const fields = ['_id', 'title', 'description', 'basePrice', 'currentPrice', 'expirationTime', 'status'];
+    const fields = [
+      '_id',
+      'title',
+      'description',
+      'basePrice',
+      'currentPrice',
+      'expirationTime',
+      'status'
+    ];
     const parser = new Parser({ fields });
     const csv = parser.parse(auctions);
 
@@ -31,7 +39,7 @@ const exportBiddingHistory = async (req, res) => {
     if (!auctions.length) {
       return res.status(404).json({ error: 'No auctions found for this seller' });
     }
-    const auctionIds = auctions.map(a => a._id);
+    const auctionIds = auctions.map((a) => a._id);
     // Get all bids for these auctions
     const bids = await Bid.find({ auction: { $in: auctionIds } })
       .populate('auction', 'title')
@@ -41,14 +49,20 @@ const exportBiddingHistory = async (req, res) => {
       return res.status(404).json({ error: 'No bids found for this seller' });
     }
     // Format for CSV
-    const rows = bids.map(bid => ({
+    const rows = bids.map((bid) => ({
       'Auction Title': bid.auction?.title || '',
       'Auction ID': bid.auction?._id?.toString() || '',
       'Bid Amount': bid.amount,
       'Bidder ID (or email)': bid.bidder?.email || bid.bidder?._id?.toString() || '',
-      'Timestamp': bid.createdAt
+      Timestamp: bid.createdAt
     }));
-    const fields = ['Auction Title', 'Auction ID', 'Bid Amount', 'Bidder ID (or email)', 'Timestamp'];
+    const fields = [
+      'Auction Title',
+      'Auction ID',
+      'Bid Amount',
+      'Bidder ID (or email)',
+      'Timestamp'
+    ];
     const parser = new Parser({ fields });
     const csv = parser.parse(rows);
     res.header('Content-Type', 'text/csv');
